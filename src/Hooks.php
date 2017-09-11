@@ -13,7 +13,6 @@
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
-use Contao\Database;
 use Contao\Environment;
 use Contao\FrontendUser;
 use Contao\PageModel;
