@@ -9,7 +9,7 @@ Cross-link between pages with different domain names of a Contao installation â€
 ## Usage:
 
 * Make sure that all domains used in the Contao installation are set in the "dns" field in the root pages
-* The user have to click a link in order to fetch the cookies of the site (he originally logged in). Include the link with an InsertTag
+* The user has to click a link in order to fetch the cookies of the site (he originally logged in). Include the link with an InsertTag
 
 ## InsertTags:
 
