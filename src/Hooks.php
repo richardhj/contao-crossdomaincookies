@@ -104,10 +104,10 @@ HTML;
                 $title  = ('' !== $targetPage->pageTitle) ? $targetPage->pageTitle : $targetPage->title;
 
                 switch ($insertTagAction) {
-                    case 'link_open_switch':
+                    case 'link_open_cdc':
                         return sprintf('<a href="%s" title="%s"%s>', $href, specialchars($title), $target);
 
-                    case 'link_url_switch':
+                    case 'link_url_cdc':
                         return $href;
                 }
             }
