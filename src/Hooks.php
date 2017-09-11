@@ -62,7 +62,7 @@ HTML;
         $elements = explode('::', $insertTag);
         list ($insertTagAction, $insertTagTarget) = $elements;
 
-        if ('link_open_switch' === $insertTagAction || 'link_url_switch' === $insertTagAction) {
+        if ('link_open_cdc' === $insertTagAction || 'link_url_cdc' === $insertTagAction) {
             $targetPage = PageModel::findByIdOrAlias($insertTagTarget);
 
             if (null !== $targetPage) {
