@@ -13,10 +13,14 @@
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
+use Contao\Database;
 use Contao\Environment;
 use Contao\FrontendUser;
 use Contao\PageModel;
 use Contao\Input;
+use ContaoCommunityAlliance\Contao\Bindings\ContaoEvents;
+use ContaoCommunityAlliance\Contao\Bindings\Events\System\LogEvent;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 
 /**
@@ -46,7 +50,21 @@ class Hooks
             return;
         }
 
-        //FIXME validate originhost
+        // Check that the origin is part of this Contao installation
+        $activePageRoots = PageModel::findPublishedRootPages();
+        $validDns        = $activePageRoots->fetchEach('dns');
+        if (false === in_array(str_replace(['https://', 'http://'], '', $originHost), $validDns)) {
+            $this->getEventDispatcher()->dispatch(
+                ContaoEvents::SYSTEM_LOG,
+                new LogEvent(
+                    sprintf(
+                        'Will not include crossdomaincokie-script from "%s" as it cannot be found in any dns settings of active root pages.',
+                        $originHost
+                    ), __METHOD__, TL_ERROR
+                )
+            );
+            return;
+        }
 
         $includeToken = $this->createIncludeToken($userId);
 
@@ -97,5 +115,13 @@ HTML;
         }
 
         return false;
+    }
+
+    /**
+     * @return EventDispatcher
+     */
+    private function getEventDispatcher()
+    {
+        return $GLOBALS['container']['event-dispatcher'];
     }
 }
