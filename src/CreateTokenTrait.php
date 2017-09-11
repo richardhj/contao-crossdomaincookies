@@ -13,10 +13,15 @@
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
-
 use Contao\Config;
 use Contao\Environment;
 
+
+/**
+ * Trait CreateTokenTrait
+ *
+ * @package Richardhj\Contao\CrossDomainCookies
+ */
 trait CreateTokenTrait
 {
 
@@ -38,7 +43,7 @@ trait CreateTokenTrait
             http_build_query(
                 [
                     'act'  => $action,
-                    'user' => (int)$userId,
+                    'user' => (int) $userId,
                     'ip'   => $ip,
                     'enc'  => Config::get('encryptionKey')
                 ]

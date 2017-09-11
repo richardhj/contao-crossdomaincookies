@@ -18,6 +18,12 @@ use Contao\FrontendUser;
 use Contao\PageModel;
 use Contao\Input;
 
+
+/**
+ * Class Hooks
+ *
+ * @package Richardhj\Contao\CrossDomainCookies
+ */
 class Hooks
 {
 

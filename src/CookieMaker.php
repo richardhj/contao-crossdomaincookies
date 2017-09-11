@@ -13,11 +13,16 @@
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
-
 use Contao\Database;
 use Contao\Input;
 use Symfony\Component\HttpFoundation\Response;
 
+
+/**
+ * Class CookieMaker
+ *
+ * @package Richardhj\Contao\CrossDomainCookies
+ */
 class CookieMaker
 {
 
@@ -29,10 +34,9 @@ class CookieMaker
      */
     public function handle()
     {
-        $return       = '';
-        $token        = Input::get('t');
-        $userId       = Input::get('u');
-        $setAutoLogin = false;
+        $return = '';
+        $token  = Input::get('t');
+        $userId = Input::get('u');
 
         $response = Response::create(null, Response::HTTP_OK, ['Content-Type' => 'application/javascript']);
         if ($token !== $this->createIncludeToken($userId)) {
@@ -40,13 +44,15 @@ class CookieMaker
             return;
         }
 
-        // TODO configurable cookie names
+        // These are the cookies which will be included in the site
+        // TODO configurable cookie names via tl_settings
         $cookieNames = [
             'ISOTOPE_TEMP_CART',
             'FE_USER_AUTH',
             'FE_AUTO_LOGIN'
         ];
 
+        $setAutoLogin = false;
         foreach ($cookieNames as $cookieName) {
             $time          = time();
             $cookieContent = Input::cookie($cookieName);
