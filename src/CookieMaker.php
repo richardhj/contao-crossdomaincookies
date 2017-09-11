@@ -34,7 +34,9 @@ class CookieMaker
         $userId       = Input::get('u');
         $setAutoLogin = false;
 
+        $response = Response::create(null, Response::HTTP_OK, ['Content-Type' => 'application/javascript']);
         if ($token !== $this->createIncludeToken($userId)) {
+            $response->send();
             return;
         }
 
@@ -78,7 +80,7 @@ document.cookie = "$cookieName=$cookieContent; expires=$cookieExpires; path=/";\
 JS;
         }
 
-        $response = Response::create($return, Response::HTTP_OK, ['Content-Type' => 'application/javascript']);
+        $response->setContent($return);
         $response->send();
     }
 }
