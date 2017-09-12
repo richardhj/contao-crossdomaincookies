@@ -32,7 +32,7 @@
   "extra": {
     "contao": {
       "sources": {
-        "contao": "system/modules/textfield_multiple",
+        "contao": "system/modules/crossdomaincookies",
         "assets": "assets/crossdomaincookies"
       }
     }
