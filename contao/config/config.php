@@ -13,6 +13,14 @@
 
 
 /**
+ * Default settings
+ */
+$GLOBALS['TL_CONFIG']['crossdomaincookies_handle_auth'] = true;
+if (in_array('isotope', \Contao\ModuleLoader::getActive())) {
+    $GLOBALS['TL_CONFIG']['crossdomaincookies_shared_cookies'] = ['ISOTOPE_TEMP_CART'];
+}
+
+/**
  * Hooks
  */
 $GLOBALS['TL_HOOKS']['generatePage'][]      = ['Richardhj\Contao\CrossDomainCookies\Hooks', 'cookieListener'];

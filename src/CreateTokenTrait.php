@@ -3,11 +3,11 @@
 /**
  * This file is part of richardhj/contao-crossdomaincookies.
  *
- * Copyright (c) 2017 Richard Henkenjohann
+ * Copyright (c) 2015-2017 Richard Henkenjohann
  *
  * @package   CrossDomainCookies
  * @author    Richard Henkenjohann <richardhenkenjohann@googlemail.com>
- * @copyright 2017 Richard Henkenjohann
+ * @copyright 2015-2017 Richard Henkenjohann
  * @license   https://github.com/richardhj/contao-crossdomaincookies/blob/master/LICENSE LGPL-3.0
  */
 
@@ -26,42 +26,36 @@ trait CreateTokenTrait
 {
 
     /**
-     * @param int $userId
-     *
      * @return string
      */
-    private function createIncludeToken($userId)
+    private function createIncludeToken()
     {
-        return $this->createToken($userId, 'include');
+        return $this->createToken('include');
     }
 
     /**
-     * @param int $userId
-     *
      * @return string
      */
-    private function createLinkToken($userId)
+    private function createLinkToken()
     {
-        return $this->createToken($userId, 'link');
+        return $this->createToken('link');
     }
 
     /**
-     * @param int    $userId
      * @param string $action
      *
      * @return string
      */
-    private function createToken($userId, $action)
+    private function createToken($action)
     {
         $ip = (!Config::get('disableIpCheck')) ? Environment::get('ip') : '';
 
         return md5(
             http_build_query(
                 [
-                    'act'  => $action,
-                    'user' => (int) $userId,
-                    'ip'   => $ip,
-                    'enc'  => Config::get('encryptionKey')
+                    'act' => $action,
+                    'ip'  => $ip,
+                    'enc' => Config::get('encryptionKey')
                 ]
             )
         );

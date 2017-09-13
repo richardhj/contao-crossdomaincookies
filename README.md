@@ -33,14 +33,13 @@ Make sure to replace `99` with the id or alias of the other page.
 
 Page A and Page B are part of one Contao installation.
 
-When hyperlinking from Page A to Page B, the link looks like `https://page-b.local/?o=https%3A%2F%2Fpage-a.local&u=1&t=zyxitopjfsetbjjutwsdf`
+When hyperlinking from Page A to Page B, the link looks like `https://page-b.local/?o=page-a.local&t=zyxitopjfsetbjjutwsdf`
 
-As you can see, three get parameters are added to the page uri:
+As you can see, two get parameters are added to the page uri:
 
 | Parameter | Role                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | o         | The page redirected from and the origin of the cookies (where the cookies will be fetched from) |
-| u         | The id of the logged in user or `0`                                                             |
 | t         | A token, just for security purposes                                                             |
 
 When being on Page B—and the get parameters are present—, a javascript will be included. This script will create the cookies on Page B. The script will get loaded from `https://page-a.local`, therefore the cookies are the ones present on Page A.
@@ -58,10 +57,6 @@ That's the magic behind cross domain cookies.
 A few words about the security and vulnerability:
 
 The extension automatically loads a javascript from a site that is given as a get parameter. The get parameter can be easily modified and this extension would be a great example for XSS-vulnerably in practice. So this extension needs to check that the url given as get parameter is part of the Contao installation. So before including the javascript from the other domain, it verifies that the other domain can be found in the "dns" fields of the root pages of the Contao installation.
-
-Also, we use the token that is only valid for the current user, so that sharing the link will not share the possibility of sharing the cookies to other users.
-
-However, the great potential of an open source project is that it makes the software more secure. As other developers can read the code, potential vulnerabilities can be found and eliminated.
 
 ## License
 

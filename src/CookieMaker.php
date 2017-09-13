@@ -3,18 +3,21 @@
 /**
  * This file is part of richardhj/contao-crossdomaincookies.
  *
- * Copyright (c) 2017 Richard Henkenjohann
+ * Copyright (c) 2015-2017 Richard Henkenjohann
  *
  * @package   CrossDomainCookies
  * @author    Richard Henkenjohann <richardhenkenjohann@googlemail.com>
- * @copyright 2017 Richard Henkenjohann
+ * @copyright 2015-2017 Richard Henkenjohann
  * @license   https://github.com/richardhj/contao-crossdomaincookies/blob/master/LICENSE LGPL-3.0
  */
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
-use Contao\Database;
+use Contao\Config;
 use Contao\Input;
+use Contao\MemberModel;
+use Contao\SessionModel;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 
@@ -28,65 +31,179 @@ class CookieMaker
 
     use CreateTokenTrait;
 
+    /**
+     * Handle all the cookies needed for cross-domain authentication
+     *
+     * @var bool
+     */
+    private $handleAuthentication;
+
+    /**
+     * The names of cookies to share cross-domain
+     *
+     * @var string[]
+     */
+    private $sharedCookies;
+
+    /**
+     * The cookies that will be printed in the javascript
+     *
+     * @var Cookie[]
+     */
+    private $cookies;
+
+    /**
+     * CookieMaker constructor.
+     */
+    public function __construct()
+    {
+        $this->handleAuthentication = Config::get('crossdomaincookies_handle_auth');
+        $this->sharedCookies        = deserialize(Config::get('crossdomaincookies_shared_cookies'), true);
+        $this->cookies              = [];
+    }
 
     /**
      * Send javascript code which will load the cookies
      */
     public function handle()
     {
-        $return = '';
-        $token  = Input::get('t');
-        $userId = Input::get('u');
+        $token = Input::get('t');
 
         $response = Response::create(null, Response::HTTP_OK, ['Content-Type' => 'application/javascript']);
-        if ($token !== $this->createIncludeToken($userId)) {
+        if ($token !== $this->createIncludeToken()) {
             $response->send();
             return;
         }
 
-        // These are the cookies which will be included in the site
-        // TODO configurable cookie names via tl_settings
-        $cookieNames = [
-            'ISOTOPE_TEMP_CART',
-            'FE_USER_AUTH',
-            'FE_AUTO_LOGIN'
-        ];
-
-        $setAutoLogin = false;
-        foreach ($cookieNames as $cookieName) {
-            $time          = time();
-            $cookieContent = Input::cookie($cookieName);
-            $timeSet       = $cookieContent ? $time + 2592000 : $time - 172800;
-
-            if ('FE_AUTO_LOGIN' === $cookieName && true === $setAutoLogin && $userId) {
-                $token = md5(uniqid(mt_rand(), true));
-
-                $set['createdOn'] = $time;
-                $set['autologin'] = $token;
-                Database::getInstance()
-                    ->prepare("UPDATE tl_member %s WHERE id=?")
-                    ->set($set)
-                    ->execute($userId);
-
-                $cookieContent = $token;
-                $timeSet       = $time + $GLOBALS['TL_CONFIG']['autologin'];
-            }
-
-            if ('FE_USER_AUTH' === $cookieName && '' !== $cookieContent) {
-                $setAutoLogin = true;
-            }
-
-            $cookieExpires = gmdate(
-                'D, d M Y H:i:s T',
-                $timeSet
-            );
-
-            $return .= <<<JS
-document.cookie = "$cookieName=$cookieContent; expires=$cookieExpires; path=/";\n
-JS;
+        if ($this->isHandleAuthentication()) {
+            $this->handleAuthenticationCookies();
         }
 
-        $response->setContent($return);
+        foreach ($this->getSharedCookies() as $cookieName) {
+            $cookie = $this->createCookie($cookieName);
+            $this->addCookie($cookie);
+        }
+
+        $cookiesJS =
+            'document.cookie = "' . implode('";' . PHP_EOL . 'document.cookie = "', $this->getCookies()) . '";';
+        $response->setContent($cookiesJS);
         $response->send();
+    }
+
+    /**
+     * Handle authentication: Add cookies for FE_USER_AUTH and FE_AUTO_LOGIN
+     */
+    private function handleAuthenticationCookies()
+    {
+        $cookieName = 'FE_USER_AUTH';
+        // Will not work, see comment below
+        //$cookie = $this->createCookie($cookieName);
+        //$this->addCookie($cookie);
+
+        if (null === ($sessionModel =
+                SessionModel::findByHashAndName($this->getCookieValue($cookieName), $cookieName))) {
+            return;
+        }
+        if (null === ($memberModel = MemberModel::findById($sessionModel->pid))) {
+            return;
+        }
+
+        // Now we need to force activate auto_login as Contao checks for the session_id which differs on both domains
+        $cookieName  = 'FE_AUTO_LOGIN';
+        $cookieValue = $this->getCookieValue($cookieName);
+        if (null === $cookieValue) {
+            $cookieValue = md5(uniqid(mt_rand(), true));
+
+            $memberModel->createdOn = time();
+            $memberModel->autologin = $cookieValue;
+            $memberModel->save();
+        }
+
+        $cookieExpire = time() + $GLOBALS['TL_CONFIG']['autologin'];
+        $cookie       = $this->createCookie($cookieName, $cookieValue, $cookieExpire);
+
+        $this->addCookie($cookie);
+    }
+
+    /**
+     * Create a cookie. Sets `httpOnly` to false by default (!)
+     *
+     * @param string                        $name     The name of the cookie
+     * @param string|null                   $value    The value of the cookie
+     * @param int|string|\DateTimeInterface $expire   The time the cookie expires
+     * @param string                        $path     The path on the server in which the cookie will be available on
+     * @param string|null                   $domain   The domain that the cookie is available to
+     * @param bool                          $secure   Whether the cookie should only be transmitted over a secure HTTPS
+     *                                                connection from the client
+     * @param bool                          $httpOnly Whether the cookie will be made accessible only through the HTTP
+     *                                                protocol
+     * @param bool                          $raw      Whether the cookie value should be sent with no url encoding
+     * @param string|null                   $sameSite Whether the cookie will be available for cross-site requests
+     *
+     * @return Cookie
+     */
+    private function createCookie(
+        $name,
+        $value = null,
+        $expire = 0,
+        $path = '/',
+        $domain = null,
+        $secure = false,
+        $httpOnly = false,
+        $raw = false,
+        $sameSite = null
+    ) {
+        if (null === $value) {
+            $value = $this->getCookieValue($name);
+        }
+        if (0 === $expire) {
+            $time   = time();
+            $expire = (null !== $value) ? $time + 2592000 : $time - 172800;
+        }
+
+        // Set httpOnly to false
+        return new Cookie($name, $value, $expire, $path, $domain, $secure, $httpOnly, $raw, $sameSite);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isHandleAuthentication()
+    {
+        return $this->handleAuthentication;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getSharedCookies()
+    {
+        return $this->sharedCookies;
+    }
+
+    /**
+     * @return Cookie[]
+     */
+    private function getCookies()
+    {
+        return $this->cookies;
+    }
+
+    /**
+     * @param Cookie $cookie
+     */
+    private function addCookie(Cookie $cookie)
+    {
+        $this->cookies[] = $cookie;
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return mixed
+     */
+    private function getCookieValue($name)
+    {
+        return Input::cookie($name);
     }
 }

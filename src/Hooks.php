@@ -3,18 +3,17 @@
 /**
  * This file is part of richardhj/contao-crossdomaincookies.
  *
- * Copyright (c) 2017 Richard Henkenjohann
+ * Copyright (c) 2015-2017 Richard Henkenjohann
  *
  * @package   CrossDomainCookies
  * @author    Richard Henkenjohann <richardhenkenjohann@googlemail.com>
- * @copyright 2017 Richard Henkenjohann
+ * @copyright 2015-2017 Richard Henkenjohann
  * @license   https://github.com/richardhj/contao-crossdomaincookies/blob/master/LICENSE LGPL-3.0
  */
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
 use Contao\Environment;
-use Contao\FrontendUser;
 use Contao\PageModel;
 use Contao\Input;
 use ContaoCommunityAlliance\Contao\Bindings\ContaoEvents;
@@ -43,16 +42,17 @@ class Hooks
     {
         $originHost = Input::get('o');
         $linkToken  = Input::get('t');
-        $userId     = Input::get('u');
 
-        if (null === $originHost || null === $linkToken || $linkToken !== $this->createLinkToken($userId)) {
+        if (null === $originHost || null === $linkToken || $linkToken !== $this->createLinkToken()) {
+            return;
+        }
+        if (null === ($activePageRoots = PageModel::findPublishedRootPages())) {
             return;
         }
 
-        // Check that the origin is part of this Contao installation
-        $activePageRoots = PageModel::findPublishedRootPages();
-        $validDns        = $activePageRoots->fetchEach('dns');
-        if (false === in_array(str_replace(['https://', 'http://'], '', $originHost), $validDns)) {
+        // Check that the origin is part of this Contao installation (possible XSS vulnerability)
+        $validDns = $activePageRoots->fetchEach('dns');
+        if (false === in_array($originHost, $validDns)) {
             $this->getEventDispatcher()->dispatch(
                 ContaoEvents::SYSTEM_LOG,
                 new LogEvent(
@@ -65,10 +65,9 @@ class Hooks
             return;
         }
 
-        $includeToken = $this->createIncludeToken($userId);
-
+        $includeToken         = $this->createIncludeToken();
         $GLOBALS['TL_HEAD'][] = <<<HTML
-<script src="$originHost/assets/crossdomaincookies/cookiemaker.php?t=$includeToken&u=$userId"></script>
+<script src="//$originHost/assets/crossdomaincookies/cookiemaker.php?t=$includeToken"></script>
 HTML;
     }
 
@@ -89,14 +88,13 @@ HTML;
             $targetPage = PageModel::findByIdOrAlias($insertTagTarget);
 
             if (null !== $targetPage) {
-                $currentHost = Environment::get('url');
-                $userId      = FrontendUser::getInstance()->id ?: 0;
-                $linkToken   = $this->createLinkToken($userId);
+                $currentHost = Environment::get('httpHost');
+                $linkToken   = $this->createLinkToken();
 
                 $href   = sprintf(
                     '%s?%s',
                     $targetPage->getFrontendUrl(),
-                    http_build_query(['o' => $currentHost, 'u' => $userId, 't' => $linkToken])
+                    http_build_query(['o' => $currentHost, 't' => $linkToken])
                 );
                 $target = $targetPage->target
                     ? (('xhtml' === $targetPage->outputFormat) ? LINK_NEW_WINDOW : ' target="_blank"')
