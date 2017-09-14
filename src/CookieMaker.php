@@ -18,6 +18,7 @@ use Contao\Environment;
 use Contao\Input;
 use Contao\MemberModel;
 use Contao\SessionModel;
+use Contao\System;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -109,8 +110,9 @@ class CookieMaker
             return;
         }
 
-        $cookieName  = 'FE_AUTO_LOGIN';
-        $cookieValue = $this->getCookieValue($cookieName);
+        $cookieName   = 'FE_AUTO_LOGIN';
+        $cookieValue  = $this->getCookieValue($cookieName);
+        $cookieExpire = time() + $GLOBALS['TL_CONFIG']['autologin'];
         if (null === $cookieValue) {
             // Now we need to force auto_login as Contao checks for the session_id on regular authentication
             // and the session_id differs on both domains as well
@@ -127,11 +129,12 @@ class CookieMaker
             $memberModel->createdOn = time();
             $memberModel->autologin = $cookieValue;
             $memberModel->save();
+
+            // Equal rights for each domain. Set auto_login cookie on origin domain too
+            System::setCookie($cookieName, $cookieValue, $cookieExpire);
         }
 
-        $cookieExpire = time() + $GLOBALS['TL_CONFIG']['autologin'];
-        $cookie       = $this->createCookie($cookieName, $cookieValue, $cookieExpire);
-
+        $cookie = $this->createCookie($cookieName, $cookieValue, $cookieExpire);
         $this->addCookie($cookie);
     }
 
