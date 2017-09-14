@@ -13,9 +13,12 @@
 
 namespace Richardhj\Contao\CrossDomainCookies;
 
+use Contao\Database;
 use Contao\Environment;
+use Contao\FrontendUser;
 use Contao\PageModel;
 use Contao\Input;
+use Contao\User;
 use ContaoCommunityAlliance\Contao\Bindings\ContaoEvents;
 use ContaoCommunityAlliance\Contao\Bindings\Events\System\LogEvent;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -112,6 +115,28 @@ HTML;
         }
 
         return false;
+    }
+
+    /**
+     * The default logout routine deletes the current session entry and expires the auth cookie. This logs out the user
+     * on the current domain exclusively.
+     * We widen the logout by truncating the auto_login hash for the member and deleting all session entries for the
+     * member.
+     *
+     * @param User $user
+     */
+    public function forceLogout(User $user)
+    {
+        if (!$user instanceof FrontendUser) {
+            return;
+        }
+
+        $user->autologin = '';
+        $user->save();
+
+        Database::getInstance()
+            ->prepare("DELETE FROM tl_session WHERE pid=? AND name='FE_USER_AUTH'")
+            ->execute($user->id);
     }
 
     /**

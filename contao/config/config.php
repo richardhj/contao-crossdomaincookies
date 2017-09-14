@@ -25,3 +25,4 @@ if (in_array('isotope', \Contao\ModuleLoader::getActive())) {
  */
 $GLOBALS['TL_HOOKS']['generatePage'][]      = ['Richardhj\Contao\CrossDomainCookies\Hooks', 'cookieListener'];
 $GLOBALS['TL_HOOKS']['replaceInsertTags'][] = ['Richardhj\Contao\CrossDomainCookies\Hooks', 'replaceSwitchInsertTags'];
+$GLOBALS['TL_HOOKS']['postLogout'][]        = ['Richardhj\Contao\CrossDomainCookies\Hooks', 'forceLogout'];
