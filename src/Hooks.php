@@ -60,7 +60,7 @@ class Hooks
                 ContaoEvents::SYSTEM_LOG,
                 new LogEvent(
                     sprintf(
-                        'Will not include crossdomaincokie-script from "%s" as it cannot be found in any dns settings of active root pages.',
+                        'Will not include crossdomaincookies-script from "%s" as it cannot be found in any dns settings of active root pages.',
                         $originHost
                     ), __METHOD__, TL_ERROR
                 )
