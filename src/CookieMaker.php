@@ -86,9 +86,13 @@ class CookieMaker
             $this->addCookie($cookie);
         }
 
-        $cookiesJS =
-            'document.cookie = "' . implode('";' . PHP_EOL . 'document.cookie = "', $this->getCookies()) . '";';
-        $response->setContent($cookiesJS);
+        if (count($this->getCookies())) {
+            $cookiesJS =
+                'document.cookie = "' . implode('";' . PHP_EOL . 'document.cookie = "', $this->getCookies()) . '";';
+            // Reload page without query string
+            $cookiesJS .= PHP_EOL . 'window.location = window.location.pathname;';
+            $response->setContent($cookiesJS);
+        }
         $response->send();
     }
 
