@@ -131,7 +131,7 @@ HTML;
             return;
         }
 
-        $user->autologin = '';
+        $user->autologin = null;
         $user->save();
 
         Database::getInstance()
