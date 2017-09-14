@@ -94,18 +94,18 @@ HTML;
                 $currentHost = Environment::get('httpHost');
                 $linkToken   = $this->createLinkToken();
 
-                $href   = sprintf(
+                $href = sprintf(
                     '%s?%s',
                     $targetPage->getFrontendUrl(),
                     http_build_query(['o' => $currentHost, 't' => $linkToken])
                 );
-                $target = $targetPage->target
-                    ? (('xhtml' === $targetPage->outputFormat) ? LINK_NEW_WINDOW : ' target="_blank"')
-                    : '';
-                $title  = ('' !== $targetPage->pageTitle) ? $targetPage->pageTitle : $targetPage->title;
 
                 switch ($insertTagAction) {
                     case 'link_open_cdc':
+                        $target = $targetPage->target
+                            ? (('xhtml' === $targetPage->outputFormat) ? LINK_NEW_WINDOW : ' target="_blank"')
+                            : '';
+                        $title  = ('' !== $targetPage->pageTitle) ? $targetPage->pageTitle : $targetPage->title;
                         return sprintf('<a href="%s" title="%s"%s>', $href, specialchars($title), $target);
 
                     case 'link_url_cdc':
