@@ -14,6 +14,7 @@
 namespace Richardhj\Contao\CrossDomainCookies;
 
 use Contao\Config;
+use Contao\Environment;
 use Contao\Input;
 use Contao\MemberModel;
 use Contao\SessionModel;
@@ -95,23 +96,32 @@ class CookieMaker
      */
     private function handleAuthenticationCookies()
     {
-        $cookieName = 'FE_USER_AUTH';
+        $cookieName  = 'FE_USER_AUTH';
+        $cookieValue = $this->getCookieValue($cookieName);
         // Will not work, see comment below
         //$cookie = $this->createCookie($cookieName);
         //$this->addCookie($cookie);
 
-        if (null === ($sessionModel =
-                SessionModel::findByHashAndName($this->getCookieValue($cookieName), $cookieName))) {
+        if (null === ($sessionModel = SessionModel::findByHashAndName($cookieValue, $cookieName))) {
             return;
         }
         if (null === ($memberModel = MemberModel::findById($sessionModel->pid))) {
             return;
         }
 
-        // Now we need to force activate auto_login as Contao checks for the session_id which differs on both domains
         $cookieName  = 'FE_AUTO_LOGIN';
         $cookieValue = $this->getCookieValue($cookieName);
         if (null === $cookieValue) {
+            // Now we need to force auto_login as Contao checks for the session_id on regular authentication
+            // and the session_id differs on both domains as well
+            $currentIp     = Environment::get('ip');
+            $sessionExpire = $sessionModel->tstamp + Config::get('sessionTimeout');
+
+            // Validate the current session before we activate auto_login
+            if ((!Config::get('disableIpCheck') && $currentIp !== $sessionModel->ip) || $sessionExpire < time()) {
+                return;
+            }
+
             $cookieValue = md5(uniqid(mt_rand(), true));
 
             $memberModel->createdOn = time();
@@ -161,7 +171,6 @@ class CookieMaker
             $expire = (null !== $value) ? $time + 2592000 : $time - 172800;
         }
 
-        // Set httpOnly to false
         return new Cookie($name, $value, $expire, $path, $domain, $secure, $httpOnly, $raw, $sameSite);
     }
 
