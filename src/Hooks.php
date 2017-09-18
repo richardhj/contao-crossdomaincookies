@@ -82,7 +82,7 @@ HTML;
      *
      * @return string|false
      */
-    public function replaceSwitchInsertTags($insertTag)
+    public function replaceInsertTags($insertTag)
     {
         $elements = explode('::', $insertTag);
         list ($insertTagAction, $insertTagTarget) = $elements;
