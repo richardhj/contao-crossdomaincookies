@@ -70,8 +70,7 @@ In order to handle the authentication cross-domain, this extension activates aut
 particular user. That means, that the user will not get logged out by closing the window, which is the default behavior. 
 This is because Contao checks the auth cookie against the session_id which is bound to a cookie as well and will 
 therefore change on the other domain. This might be a problem for websites with sensible data and users who forget to 
-log out. Nevertheless this is a point that can be enhanced (for devs: either by enabling/disabling the auto_login cookie 
-or by using the postAuth hook).
+log out. To keep the problem down, the auto_login cookie will expire after a few time.
 
 ## License
 

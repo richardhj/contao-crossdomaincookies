@@ -41,6 +41,13 @@ class CookieMaker
     private $handleAuthentication;
 
     /**
+     * Activate auto_login when handling authentication cross-domain
+     *
+     * @var bool
+     */
+    private $activateAutoLogin;
+
+    /**
      * The names of cookies to share cross-domain
      *
      * @var string[]
@@ -60,6 +67,7 @@ class CookieMaker
     public function __construct()
     {
         $this->handleAuthentication = Config::get('crossdomaincookies_handle_auth');
+        $this->activateAutoLogin    = Config::get('crossdomaincookies_activate_auto_login');
         $this->sharedCookies        = deserialize(Config::get('crossdomaincookies_shared_cookies'), true);
         $this->cookies              = [];
     }
@@ -82,6 +90,9 @@ class CookieMaker
         }
 
         foreach ($this->getSharedCookies() as $cookieName) {
+            if ('' === $cookieName) {
+                continue;
+            }
             $cookie = $this->createCookie($cookieName);
             $this->addCookie($cookie);
         }
@@ -101,6 +112,8 @@ class CookieMaker
      */
     private function handleAuthenticationCookies()
     {
+        $time = time();
+
         $cookieName  = 'FE_USER_AUTH';
         $cookieValue = $this->getCookieValue($cookieName);
         // Will not work, see comment below
@@ -116,26 +129,30 @@ class CookieMaker
 
         $cookieName   = 'FE_AUTO_LOGIN';
         $cookieValue  = $this->getCookieValue($cookieName);
-        $cookieExpire = time() + $GLOBALS['TL_CONFIG']['autologin'];
-        if (null === $cookieValue) {
+        $cookieExpire = $time + $this->getRemainingAutoLoginPeriod($cookieValue);
+        if (null === $cookieValue || $this->isActivateAutoLogin() || !$this->isValidAutoLogin($cookieValue)) {
             // Now we need to force auto_login as Contao checks for the session_id on regular authentication
             // and the session_id differs on both domains as well
             $currentIp     = Environment::get('ip');
             $sessionExpire = $sessionModel->tstamp + Config::get('sessionTimeout');
-
-            // Validate the current session before we activate auto_login
             if ((!Config::get('disableIpCheck') && $currentIp !== $sessionModel->ip) || $sessionExpire < time()) {
+                // Stop if the current session cannot be validated before we activate auto_login
                 return;
             }
 
             $cookieValue = md5(uniqid(mt_rand(), true));
+            // If we want to activate auto_login, we set the regular cookie expire, otherwise we set a short expire, as
+            // we need the auto_login cookie anyway
+            $cookieExpire = ($this->isActivateAutoLogin()) ? $time + Config::get('autologin') : $time + 10;
 
             $memberModel->createdOn = time();
             $memberModel->autologin = $cookieValue;
             $memberModel->save();
 
-            // Equal rights for each domain. Set auto_login cookie on origin domain too
-            System::setCookie($cookieName, $cookieValue, $cookieExpire);
+            if ($this->isActivateAutoLogin()) {
+                // Equal rights for each domain. Set auto_login cookie on origin domain too
+                System::setCookie($cookieName, $cookieValue, $cookieExpire);
+            }
         }
 
         $cookie = $this->createCookie($cookieName, $cookieValue, $cookieExpire);
@@ -182,11 +199,53 @@ class CookieMaker
     }
 
     /**
+     * Checks whether the auto_login token is able to gain authentication
+     *
+     * @param $token
+     *
+     * @return bool
+     */
+    private function isValidAutoLogin($token)
+    {
+        $remaining = $this->getRemainingAutoLoginPeriod($token);
+        if ($remaining > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the time a auto_login token is valid
+     *
+     * @param $token
+     *
+     * @return int|null
+     */
+    private function getRemainingAutoLoginPeriod($token)
+    {
+        $memberModel = MemberModel::findByAutologin($token);
+        if (null === $memberModel) {
+            return null;
+        }
+
+        return $memberModel->createdOn - time() + Config::get('autologin');
+    }
+
+    /**
      * @return bool
      */
     public function isHandleAuthentication()
     {
         return $this->handleAuthentication;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isActivateAutoLogin()
+    {
+        return $this->activateAutoLogin;
     }
 
     /**
